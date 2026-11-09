@@ -8,7 +8,11 @@ import {
   EXAMPLE_SYMPTOMS,
   SEVERITY_OPTIONS,
 } from "@/lib/labels";
-import type { AssociatedSymptom, TriageInput } from "@/lib/triage/schema";
+import {
+  TriageRecordSchema,
+  type AssociatedSymptom,
+  type TriageInput,
+} from "@/lib/triage/schema";
 import { Chip } from "./Chip";
 import { OptionCard, OptionGroup } from "./OptionCard";
 import { PageShell, TwoColumn } from "./PageShell";
@@ -27,6 +31,8 @@ const TITLES: Record<Exclude<Phase, "submitting">, string> = {
   severity: "How strong are your symptoms?",
   associated: "Do you have any of these as well?",
 };
+
+const STEPS = ["describe", "duration", "severity", "associated"] as const;
 
 const QUESTION_NUMBER = { duration: 1, severity: 2, associated: 3 } as const;
 
@@ -91,8 +97,8 @@ export function TriageFlow() {
       });
       if (!response.ok) throw new Error(`Request failed with ${response.status}`);
 
-      const record: { id: string } = await response.json();
-      router.push(`/triage/${record.id}`);
+      const { id } = TriageRecordSchema.pick({ id: true }).parse(await response.json());
+      router.push(`/triage/${id}`);
     } catch {
       setSubmitError(
         "Something went wrong on our side. Your answers are still here, so please try again.",
@@ -175,17 +181,9 @@ export function TriageFlow() {
                 onDuration={setDuration}
                 onSeverity={setSeverity}
                 onToggleAssociated={toggleAssociated}
-                onBack={() =>
-                  setPhase(
-                    phase === "duration" ? "describe" : phase === "severity" ? "duration" : "severity",
-                  )
-                }
+                onBack={() => setPhase(STEPS[STEPS.indexOf(phase) - 1])}
                 onContinue={() =>
-                  phase === "duration"
-                    ? setPhase("severity")
-                    : phase === "severity"
-                      ? setPhase("associated")
-                      : submit()
+                  phase === "associated" ? submit() : setPhase(STEPS[STEPS.indexOf(phase) + 1])
                 }
               />
             )}
