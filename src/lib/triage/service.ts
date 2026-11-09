@@ -27,7 +27,37 @@ type Deps = {
   store: TriageStore;
 };
 
-const defaultDeps: Deps = { assess: assessWithStub, store: memoryStore };
+/**
+ * Uses the Mastra agent when an API key is configured, otherwise the stub, so
+ * the app still runs locally without one. Loaded lazily to keep Mastra out of
+ * the way until it is needed.
+ */
+const assessDefault: AssessFn = async (input) => {
+  if (!process.env.ANTHROPIC_API_KEY) return assessWithStub(input);
+  const { assessWithMastra } = await import("@/lib/mastra/agent");
+  return assessWithMastra(input);
+};
+
+/** Postgres (Neon) when DATABASE_URL is set, otherwise in-memory for local development. */
+const storeDefault: TriageStore = {
+  async save(record) {
+    return (await resolveStore()).save(record);
+  },
+  async get(id) {
+    return (await resolveStore()).get(id);
+  },
+};
+
+let resolved: TriageStore | undefined;
+async function resolveStore(): Promise<TriageStore> {
+  if (resolved) return resolved;
+  const url = process.env.DATABASE_URL;
+  if (!url) return (resolved = memoryStore);
+  const { createPostgresStore } = await import("@/lib/db/store");
+  return (resolved = createPostgresStore(url));
+}
+
+const defaultDeps: Deps = { assess: assessDefault, store: storeDefault };
 
 function emergencyRecord(
   input: TriageInput,
