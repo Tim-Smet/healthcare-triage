@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+/* Design tokens: see docs/DESIGN.md. Use these names in components, never raw hex. */
+:root {
+  --bg: #f4f8f8;
+  --surface: #ffffff;
+  --ink: #0f2a2e;
+  --ink-muted: #3b5156;
+  --ink-subtle: #4a6266;
+  --border: #d5e3e4;
+  --border-input: #6f8a8e;
+  --divider: #e1ecec;
+  --primary: #0e7c86;
+  --primary-ink: #0b6169;
+  --primary-tint: #e8f4f5;
+  --primary-tint-2: #e3f1f2;
+  --urgent-bg: #fdf1dc;
+  --urgent-ink: #8a4b08;
+  --emergency: #b3261e;
+  --emergency-ink: #a8281f;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-border: var(--border);
+  --color-border-input: var(--border-input);
+  --color-divider: var(--divider);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-tint: var(--primary-tint);
+  --color-primary-tint-2: var(--primary-tint-2);
+  --color-urgent-bg: var(--urgent-bg);
+  --color-urgent-ink: var(--urgent-ink);
+  --color-emergency: var(--emergency);
+  --color-emergency-ink: var(--emergency-ink);
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  --radius-card: 24px;
+  --radius-option: 16px;
+  --radius-input: 14px;
+
+  --shadow-card: 0 12px 40px rgba(15, 42, 46, 0.07);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+/* Focus ring on every interactive element (docs/DESIGN.md, accessibility rules). */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
