@@ -75,9 +75,3 @@ Route handlers stay thin: they validate input, call `lib/triage/service.ts` and 
   "consultationType": "check-up"
 }
 ```
-
-## Out of scope (next steps)
-
-- Authentication and patient identity
-- Real integration with a scheduling system or EHR
-- PII handling, audit logging and compliance requirements
