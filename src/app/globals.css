@@ -40,11 +40,19 @@
 
   --font-sans: var(--font-inter), system-ui, sans-serif;
 
+  /* Single column below ~900px (docs/DESIGN.md). Use as `desk:` */
+  --breakpoint-desk: 56.25rem;
+
   --radius-card: 24px;
   --radius-option: 16px;
   --radius-input: 14px;
 
   --shadow-card: 0 12px 40px rgba(15, 42, 46, 0.07);
+}
+
+/* WCAG 2.4.11: the pinned mobile action bar must never cover the focused element. */
+html {
+  scroll-padding-bottom: 10rem;
 }
 
 body {
@@ -57,4 +65,9 @@ body {
 :focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* The emergency screen has a red background, so the focus ring is white there. */
+.on-emergency :focus-visible {
+  outline-color: #ffffff;
 }
