@@ -51,6 +51,7 @@ The app runs at http://localhost:3000.
 | `npm run build` | Production build |
 | `npm run start` | Run the production build |
 | `npm run lint` | Lint the code |
+| `npm test` | Run the tests (Vitest; no DB or API key needed) |
 | `npm run db:generate` | Generate a migration after changing the schema |
 | `npm run db:migrate` | Apply migrations |
 
