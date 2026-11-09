@@ -19,7 +19,7 @@ Principles:
 | `ink-muted` | `#3B5156` | Secondary text |
 | `ink-subtle` | `#4A6266` | Captions, labels (min 4.5:1 on `bg`) |
 | `border` | `#D5E3E4` | Card and footer borders |
-| `border-input` | `#B7CACC` | Inputs, unselected option cards, chips |
+| `border-input` | `#6F8A8E` | Inputs, unselected option cards, chips (3:1 against white, WCAG 1.4.11; verify the final hex) |
 | `divider` | `#E1ECEC` | Lines inside cards |
 | `primary` | `#0E7C86` | Primary button, selected state, focus ring |
 | `primary-ink` | `#0B6169` | Primary-colored text on light backgrounds |
@@ -60,6 +60,29 @@ Inter (400, 500, 600, 700). One family everywhere.
 - Real `<button>`, `<a>`, `<input>` + `<label>`. Option cards are a `<fieldset>` of radios (visually hidden `<legend>`), not clickable divs.
 - Icon-only buttons need `aria-label`. Decorative SVG gets `aria-hidden`.
 - Text contrast is at least 4.5:1. Don't use `primary` on `bg` for small text; use `primary-ink`.
+
+## Accessibility requirements
+
+Target: **WCAG 2.2 level AA** ([Quick Reference](https://www.w3.org/WAI/WCAG22/quickref/)). The mockups predate this section, so the only visual change is `border-input` above.
+
+| Criterion | Requirement in this app |
+| --- | --- |
+| 1.4.3 Contrast (AA) | Text is at least 4.5:1 (3:1 at 24px+). Use `primary-ink`, not `primary`, for small colored text. |
+| 1.4.11 Non-text contrast (AA) | Form control boundaries, the focus ring and the selected state are at least 3:1 against their background. |
+| 1.4.1 Use of color (A) | Urgency always shows a text label. The selected `OptionCard` also changes border weight and font weight. |
+| 1.4.4 / 1.4.10 Resize, reflow (AA) | Works at 200% zoom and 320px width with no horizontal scroll. Use `rem` for type and spacing. |
+| 2.4.11 Focus not obscured (AA) | The pinned mobile `StepActions` bar must never cover the focused element. Add bottom `scroll-padding` equal to the bar height. |
+| 2.4.2 / 2.4.3 Page title, focus order (A) | Each step has its own `<title>`. On step change, move focus to the step heading. |
+| 2.5.8 Target size (AA) | Minimum 24px. We build to 44px. |
+| 3.2.6 Consistent help (A) | `EmergencyButton` stays in the same place on every screen. |
+| 3.3.1 / 3.3.3 Errors (A, AA) | Errors are text, say how to fix the problem, and are linked to the field with `aria-describedby`. An empty symptom box gets an inline error. |
+| 3.3.2 Labels (A) | Every input has a visible `<label>`. |
+| 3.3.7 Redundant entry (A) | Never ask for the same information twice. Keep answers in state across steps and prefill them on Edit. |
+| 4.1.3 Status messages (AA) | "Checking your symptoms…", the result and any error are announced through an `aria-live="polite"` region. |
+
+Not applicable: 2.5.7 Dragging (no drag interactions), 3.3.8 Accessible authentication (no login).
+
+Plain language is a product requirement too (3.1.5 is AAA, but we follow it): short sentences, no medical jargon without an explanation.
 
 ## Components
 
