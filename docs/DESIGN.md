@@ -29,7 +29,7 @@ Principles:
 | `emergency` | `#B3261E` | Emergency screen background |
 | `emergency-ink` | `#A8281F` | Emergency button outline and text on light backgrounds |
 
-Not designed yet: the **routine** pill. Proposal: `primary-tint-2` background with `primary-ink` text. Needs a contrast check.
+Pills: **Urgent** uses `urgent-bg` / `urgent-ink`. **Routine** uses `primary-tint-2` / `primary-ink`. **Emergency** has no pill, because it replaces the whole screen.
 
 ### Type
 
@@ -92,37 +92,70 @@ Plain language is a product requirement too (3.1.5 is AAA, but we follow it): sh
 | `EmergencyButton` | Outlined pill. Desktop: ink outline, "Emergency? Call now". Mobile: `emergency-ink` outline, phone icon, "Emergency". |
 | `Stepper` | Desktop: 3 numbered circles joined by lines (done = filled check, current = outlined + bold label, upcoming = grey). Mobile: "Step 2 of 3 · Details" + progress bar. |
 | `Button` | `primary` (filled), `secondary` (outlined primary), `dark` (ink fill, used for the result CTA), `text` (underlined link-style, e.g. Edit). 52px high. |
-| `OptionCard` | Radio + label in a bordered card. Selected: 2.5px `primary` border + `primary-tint` fill + semibold. 2×2 grid desktop, stacked mobile. |
+| `OptionCard` | Radio or checkbox + label in a bordered card. Selected: 2.5px `primary` border + `primary-tint` fill + semibold. Grid on desktop, stacked on mobile. Radios sit in a `<fieldset>`, checkboxes too (with the question as `<legend>`). |
 | `SymptomInput` | Labelled textarea, 4 rows, no resize, 17px text, 1.5px `border-input`. |
 | `Chip` | 44px pill, used for example symptoms. |
 | `SummaryCard` | "WHAT YOU TOLD US" overline, quoted text, Edit button. Desktop: white card in the right column. Mobile: `primary-tint` strip under the options. |
 | `SafetyNote` | `primary-tint` box: "Feeling worse right now? Severe chest pain, trouble breathing or fainting: call your local emergency number." Desktop shows it under the summary, mobile folds it into the footer text. |
-| `UrgencyPill` | Dot + label ("Urgent"). 32px high. One variant per urgency level. |
+| `UrgencyPill` | Dot + label, 32px high, 14px bold. Variants: Urgent (`urgent-bg` / `urgent-ink`) and Routine (`primary-tint-2` / `primary-ink`). Emergency has no pill. |
 | `ResultCard` | Overline, `UrgencyPill`, pathway heading, consultation type, numbered "What to do next" list, dark CTA, "Result saved" caption. |
 | `StepActions` | Back (secondary) + Continue (primary). Mobile: pinned to the bottom with a top border, above the disclaimer. |
 | `DisclaimerFooter` | "This is a prototype and does not give medical advice. In an emergency, call your local emergency number." |
 
 ## Screens and flow
 
-1. **Describe** (`/`): headline, `SymptomInput`, "Check my symptoms", example chips. Step 1 of 3.
-2. **Details** (`/`, step 2): one question per screen, `OptionCard` group, `SummaryCard` alongside. The mockup shows "How long have you had these symptoms?". Which questions are asked is still open.
-3. **Result** (`/triage/[id]`): `ResultCard` full page. Mockup is the right-hand card of board 1.
-4. **Emergency** (full screen, replaces the flow): `emergency` background, white text, "Call emergency services now.", reason, a white "While you wait" card, a large white call button, a "Why am I seeing this?" outline button. Triggered by the red-flag rules, and also when the AI returns `emergency`.
+Layout, desktop: header, then a two-column grid (`1.5fr 1fr`, gap 56), then the footer. Mobile: header, scrolling content, pinned `StepActions`. Screens 1–3 share this shell and the `Stepper`.
 
-Layout, desktop: header, then a two-column grid (`1.5fr 1fr`, gap 56) with the step content on the left and summary plus safety note on the right, then the footer. Mobile: header, scrolling content, pinned `StepActions`.
+### 1. Describe (`/`, step 1 of 3)
+
+- Left: title "Tell us what you're feeling, in your own words.", lead "We'll point you to the right kind of care, so you don't have to know which specialist to pick.", labelled `SymptomInput` ("Your symptoms"), `Button` primary "Continue", caption "Takes about a minute", then example `Chip`s ("Persistent cough", "Stomach pain after eating") that fill the textarea when pressed.
+- Right: `SafetyNote` only. There is no summary yet.
+- Mobile: same order, with `StepActions` pinned (Continue only, no Back).
+- Empty submit: inline error under the textarea, "Tell us what's bothering you so we can help." Focus moves to the textarea.
+
+### 2. Details (`/`, step 2 of 3)
+
+One question per screen, with the caption "Question n of 3" above the title. Back on question 1 returns to Describe. Continue on question 3 submits and goes to Result. A radio question needs an answer before Continue enables. Right column (mobile: strip): `SummaryCard` with the symptom text and the answers so far, then `SafetyNote`.
+
+| # | Title | Type | Options |
+| --- | --- | --- | --- |
+| 1 | How long have you had these symptoms? | Radio, 2×2 grid | Less than a day · A few days · A few weeks · Months or longer |
+| 2 | How strong are your symptoms? | Radio, one column | Mild: I can do everything as usual · Moderate: it gets in the way · Severe: it's hard to do anything |
+| 3 | Do you have any of these as well? Select all that apply. | Checkbox, 2×3 grid | Shortness of breath · Dizziness or fainting · Fever · Nausea or vomiting · Pain that spreads to arm, jaw or back · None of these |
+
+"None of these" is exclusive: selecting it clears the others, and selecting any other clears it. Question 3 needs at least one selection. A red-flag match at any point goes straight to the Emergency screen.
+
+### 3. Result (`/triage/[id]`, step 3 of 3)
+
+- Stepper shows all three steps done. Title "Here's what we suggest."
+- Left: `ResultCard`, containing:
+  - overline "YOUR RESULT" and `UrgencyPill`
+  - pathway as the heading (for example "Cardiology") and "Recommended: a **check-up** with a heart specialist"
+  - "What to do next", 2–3 numbered steps
+  - dark `Button` named after the action ("Schedule a check-up")
+  - caption "Result saved. You can share the link with your clinic."
+- Right (mobile: strip below the card): `SummaryCard` with the symptom text and the three answers, no Edit link, then `SafetyNote`.
+- Loading: card replaced by "Checking your symptoms…" in an `aria-live="polite"` region. No spinner-only states.
+- If the AI fails, show the fallback result (Urgent, General Practice) in the same card with no error styling. The patient always gets guidance.
+
+### 4. Emergency (full screen, replaces the flow)
+
+Shown when a red-flag rule matches, or when the final result is `emergency`. No header, stepper or footer. Inter throughout.
+
+- Background `emergency` (`#B3261E`), white text, padding 32/24 on mobile. On desktop the same content sits in a centered column, max 560px.
+- Eyebrow: warning icon + "EMERGENCY", 14px, 600, letter-spacing 0.12em.
+- Title: "Call emergency services now." 46px / 1.04, 700, letter-spacing -0.02em.
+- Reason: 18px / 1.5, one plain sentence naming the matched symptoms and why it matters, for example "Crushing chest pain with shortness of breath can be a sign of a heart problem that needs help right away."
+- "While you wait" card: white, radius 20, padding 20, ink text, three numbered steps with `emergency` number badges. Default steps: "Sit down and try to stay calm." · "Unlock your front door if you can." · "Don't drive yourself to the hospital."
+- Primary action, pinned to the bottom: white button, 68px high, `emergency` text, 20px / 700, phone icon, "Call your emergency number". It is a `tel:` link; the number is configured per deployment.
+- Secondary: outlined white button, 52px, "Why am I seeing this?", which reveals the matched reason and the disclaimer.
+- Focus ring on this screen is white.
 
 ## Copy
 
 - Plain language, second person, no jargon.
 - Urgency labels: Emergency, Urgent, Routine.
 - Button labels name the action: "Check my symptoms", "Schedule a check-up".
-
-## Open items
-
-- Routine pill colors (above).
-- The emergency mockup used Space Grotesk for headings. Spec says Inter everywhere, so build it in Inter unless you want a second font.
-- Screens 1, 3 and the emergency screen only exist as parts of other boards. Draw them in the final style before building the pages.
-- Dark mode: out of scope for now.
 
 ## Tailwind
 
