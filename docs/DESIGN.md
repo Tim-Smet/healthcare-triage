@@ -147,7 +147,7 @@ Shown when a red-flag rule matches, or when the final result is `emergency`. No 
 - Title: "Call emergency services now." 46px / 1.04, 700, letter-spacing -0.02em.
 - Reason: 18px / 1.5, one plain sentence naming the matched symptoms and why it matters, for example "Crushing chest pain with shortness of breath can be a sign of a heart problem that needs help right away."
 - "While you wait" card: white, radius 20, padding 20, ink text, three numbered steps with `emergency` number badges. Default steps: "Sit down and try to stay calm." · "Unlock your front door if you can." · "Don't drive yourself to the hospital."
-- Primary action, pinned to the bottom: white button, 68px high, `emergency` text, 20px / 700, phone icon, "Call your emergency number". It is a `tel:` link; the number is configured per deployment.
+- Primary action, pinned to the bottom: white button, 68px high, `emergency` text, 20px / 700, phone icon, "Call your emergency number". It is a `tel:` link only when a number is configured per deployment. Otherwise it dials nothing and shows a prototype notice.
 - Secondary: outlined white button, 52px, "Why am I seeing this?", which reveals the matched reason and the disclaimer.
 - Focus ring on this screen is white.
 

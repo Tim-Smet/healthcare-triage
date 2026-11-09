@@ -1,5 +1,5 @@
-import { EMERGENCY_NUMBER } from "@/lib/config";
 import type { TriageRecord } from "@/lib/triage/schema";
+import { EmergencyCall } from "./EmergencyCall";
 import { EmergencyWhy } from "./EmergencyWhy";
 import { PhoneIcon, WarningIcon } from "./Icons";
 
@@ -46,14 +46,14 @@ export function EmergencyScreen({ record }: { record: TriageRecord }) {
 
       {/* Primary action stays pinned to the bottom of the screen. */}
       <div className="sticky bottom-0 bg-emergency px-6 pb-6 pt-3">
-        <div className="mx-auto max-w-[560px]">
-          <a
-            href={`tel:${EMERGENCY_NUMBER}`}
-            className="flex h-[68px] items-center justify-center gap-3 rounded-full bg-white text-xl font-bold text-emergency"
+        <div className="mx-auto max-w-[512px]">
+          <EmergencyCall
+            noticePlacement="above"
+            className="flex h-[68px] w-full items-center justify-center gap-3 rounded-full bg-white text-xl font-bold text-emergency"
           >
             <PhoneIcon className="size-6" />
             Call your emergency number
-          </a>
+          </EmergencyCall>
         </div>
       </div>
     </div>

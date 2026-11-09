@@ -40,7 +40,7 @@ The app runs at http://localhost:3000.
 | --- | --- |
 | `ANTHROPIC_API_KEY` | API key for the triage agent. Without it a simple built-in stub is used. |
 | `DATABASE_URL` | Postgres connection string. Without it results are kept in memory. |
-| `NEXT_PUBLIC_EMERGENCY_NUMBER` | Number the emergency screen dials. Defaults to `112`. |
+| `NEXT_PUBLIC_EMERGENCY_NUMBER` | Optional. If set, the emergency buttons dial it. If empty, they show a prototype notice instead. |
 | `TRIAGE_MODEL` | Optional. Overrides the model. |
 
 ## Scripts
