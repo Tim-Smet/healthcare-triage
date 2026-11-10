@@ -21,6 +21,7 @@ export const triageAgent = new Agent({
   id: "triage-agent",
   name: "Triage agent",
   model: MODEL,
+  defaultOptions: { structuredOutput: { schema: AiAssessmentSchema } },
   instructions: `
 You help a hospital triage patients. You receive a patient's symptom description
 and answers to three questions. You do NOT diagnose. You suggest where the
@@ -48,9 +49,7 @@ function buildPrompt(input: TriageInput) {
 }
 
 export const assessWithMastra: AssessFn = async (input) => {
-  const run = triageAgent.generate(buildPrompt(input), {
-    structuredOutput: { schema: AiAssessmentSchema },
-  });
+  const run = triageAgent.generate(buildPrompt(input));
 
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error("Triage agent timed out")), TIMEOUT_MS),
