@@ -40,6 +40,7 @@ The app runs at http://localhost:3000.
 | --- | --- |
 | `ANTHROPIC_API_KEY` | API key for the triage agent. Without it a simple built-in stub is used. |
 | `DATABASE_URL` | Postgres connection string. Without it results are kept in memory. |
+| `DATABASE_URL_UNPOOLED` | Optional. Direct (unpooled) connection string, used for migrations. Falls back to `DATABASE_URL`. |
 | `NEXT_PUBLIC_EMERGENCY_NUMBER` | Optional. If set, the emergency buttons dial it. If empty, they show a prototype notice instead. |
 | `TRIAGE_MODEL` | Optional. Overrides the model. |
 
