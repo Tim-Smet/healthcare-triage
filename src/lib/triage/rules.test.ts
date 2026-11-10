@@ -9,13 +9,13 @@ describe("evaluateRules", () => {
   });
 
   it.each<[string, Partial<TriageInput>]>([
-    ["chest-pain-with-breathlessness", { text: "chest pain", associated: ["shortness_of_breath"] }],
-    ["chest-pain-radiating", { text: "tight chest", associated: ["radiating_pain"] }],
-    ["chest-pain-with-fainting", { text: "chest pressure", associated: ["dizziness_fainting"] }],
+    ["chest-pain-with-breathlessness", { text: "chest pain", answers: { heart_also: ["shortness_of_breath"] } }],
+    ["chest-pain-radiating", { text: "tight chest", answers: { heart_also: ["radiating_pain"] } }],
+    ["chest-pain-with-fainting", { text: "chest pressure", answers: { heart_also: ["dizziness_fainting"] } }],
     ["severe-chest-pain", { text: "my chest hurts", severity: "severe" }],
     ["crushing-chest-pain", { text: "it feels like an elephant on my chest" }],
     ["severe-breathlessness", { text: "I can't breathe" }],
-    ["severe-breathlessness", { text: "winded", severity: "severe", associated: ["shortness_of_breath"] }],
+    ["severe-breathlessness", { text: "winded", severity: "severe", answers: { lung_breathing: ["shortness_of_breath"] } }],
     ["stroke-signs", { text: "my face is drooping" }],
     ["stroke-signs", { text: "my left arm feels weak" }],
     ["coughing-or-vomiting-blood", { text: "I am coughing up blood" }],
@@ -33,13 +33,18 @@ describe("evaluateRules", () => {
   });
 
   it("does not flag breathlessness unless it is severe", () => {
-    const input = makeInput({ text: "a bit winded", severity: "moderate", associated: ["shortness_of_breath"] });
+    const input = makeInput({ text: "a bit winded", severity: "moderate", answers: { lung_breathing: ["shortness_of_breath"] } });
     expect(evaluateRules(input)).toBeNull();
   });
 
   it("returns the first matching rule when several match", () => {
-    const input = makeInput({ text: "chest pain, I can't breathe", associated: ["shortness_of_breath"] });
+    const input = makeInput({ text: "chest pain, I can't breathe", answers: { heart_also: ["shortness_of_breath"] } });
     expect(evaluateRules(input)?.ruleId).toBe("chest-pain-with-breathlessness");
+  });
+
+  it("works on the text alone, before any question is answered (screening)", () => {
+    expect(evaluateRules({ text: "I can't breathe" })?.ruleId).toBe("severe-breathlessness");
+    expect(evaluateRules({ text: "a dry cough" })).toBeNull();
   });
 
   it("returns the pathway and a reason for the emergency screen", () => {

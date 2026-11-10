@@ -7,7 +7,7 @@ flowchart LR
   end
 
   subgraph Next["Next.js app"]
-    API["POST /api/triage<br/>GET /api/triage/:id"]
+    API["POST /api/triage/screen<br/>POST /api/triage<br/>GET /api/triage/:id"]
     SVC["Triage service"]
     RULES["1. Red-flag rules<br/>(deterministic)"]
     AGENT["2. Mastra triage agent<br/>(structured output)"]
@@ -20,7 +20,8 @@ flowchart LR
   DB[("Neon Postgres<br/>triage_sessions")]
   HOSP["Hospital system"]
 
-  UI -->|symptom text + answers| API
+  UI -->|1. symptom text| API
+  UI -->|2. answers to the category questions| API
   API --> SVC --> RULES --> MERGE
   SVC --> AGENT --> LLM
   AGENT --> MERGE
@@ -34,17 +35,21 @@ flowchart LR
 
 ## Request flow
 
-1. The UI collects the symptom text and three answers (duration, strength, other symptoms) and posts them to `/api/triage`.
-2. The route validates the body with the Zod schema and calls the triage service.
-3. Red-flag rules run first. A match returns an emergency result and the AI is skipped.
-4. Otherwise the Mastra agent ranks pathways and picks an urgency and a consultation type. Its output is validated against the schema.
-5. The final urgency is the higher of the rules result and the AI result.
-6. If the AI fails or returns invalid output, the result is `urgent`, General Practice.
-7. The result is stored and returned. The UI navigates to `/triage/[id]`, which shows either the result or, for emergencies, the full-screen emergency view.
+1. The UI posts only the symptom text to `/api/triage/screen` and shows a progress bar while it waits.
+2. Red-flag rules run on the text. A match saves an emergency record and the UI goes straight to the emergency screen, with no follow-up questions.
+3. Otherwise a screening agent returns `{ emergency, category }`. An emergency ends the flow as above. If the AI fails, the category is General Practice.
+4. The UI asks two fixed questions (how long, how strong) and then the questions for that category from the fixed bank in `lib/triage/questions.ts` (Cardiology, Pulmonology, Gastroenterology, Dietetics, General Practice).
+5. The UI posts everything to `/api/triage`. The route validates it with the Zod schema and checks the answers belong to the category.
+6. Red-flag rules run again, now with the answers. A match returns an emergency result and the AI is skipped.
+7. Otherwise the Mastra triage agent ranks pathways and picks an urgency and a consultation type. Its output is validated against the schema.
+8. The final urgency is the higher of the rules result and the AI result.
+9. If the AI fails or returns invalid output, the result is `urgent`, General Practice.
+10. The result is stored and returned. The UI navigates to `/triage/[id]`, which shows either the result or, for emergencies, the full-screen emergency view.
 
 ## Key decisions
 
 - **One Next.js app** serves the UI and the API. Route handlers stay thin; the triage logic lives in `lib/`.
+- **The AI picks the category, not the questions.** Follow-up questions come from a fixed bank, so they are reviewable, testable and stored as stable ids.
 - **Rules before AI.** Deterministic rules catch red flags such as crushing chest pain or trouble breathing. The AI can raise urgency but never lower it.
 - **One Zod schema** is the contract for the form input, the AI output, the API response and the database row.
 - **Storage behind an interface.** `TriageStore` has a Neon Postgres implementation (Drizzle, HTTP driver) and an in-memory one used when `DATABASE_URL` is not set.
@@ -63,7 +68,7 @@ flowchart LR
   "nextSteps": ["…"],
   "reason": null,
   "source": "ai",
-  "input": { "text": "…", "duration": "few_weeks", "severity": "mild", "associated": ["none"] },
+  "input": { "text": "…", "category": "Pulmonology", "duration": "few_weeks", "severity": "mild", "answers": { "lung_breathing": ["fine"] } },
   "createdAt": "2026-11-09T13:59:40.241Z"
 }
 ```
@@ -71,9 +76,9 @@ flowchart LR
 | Field | Values |
 | --- | --- |
 | `urgency` | `emergency`, `urgent`, `routine` |
-| `pathway` | `Cardiology`, `Pulmonology`, `Gastroenterology`, `General Practice` |
+| `pathway` | `Cardiology`, `Pulmonology`, `Gastroenterology`, `Dietetics`, `General Practice` |
 | `next` | `emergency`, `schedule` |
-| `consultationType` | `emergency-assessment`, `first-appointment`, `check-up`, `cardiography`, `lung-function-test` |
+| `consultationType` | `emergency-assessment`, `first-appointment`, `check-up`, `cardiography`, `lung-function-test`, `diet-consultation` |
 | `source` | `rules`, `ai`, `fallback` |
 
 ## Folder structure

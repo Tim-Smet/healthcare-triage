@@ -2,49 +2,49 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { DURATION_OPTIONS, EXAMPLE_SYMPTOMS, SEVERITY_OPTIONS } from "@/lib/labels";
+import { NONE_OPTION, questionsFor, type Question } from "@/lib/triage/questions";
 import {
-  ASSOCIATED_OPTIONS,
-  DURATION_OPTIONS,
-  EXAMPLE_SYMPTOMS,
-  SEVERITY_OPTIONS,
-} from "@/lib/labels";
-import {
+  ScreenResultSchema,
   TriageRecordSchema,
-  type AssociatedSymptom,
+  type Answers,
+  type Pathway,
+  type StoredInput,
   type TriageInput,
 } from "@/lib/triage/schema";
 import { Chip } from "./Chip";
 import { OptionCard, OptionGroup } from "./OptionCard";
 import { PageShell, TwoColumn } from "./PageShell";
 import { ResultLoading } from "./ResultLoading";
+import { ScreeningProgress } from "./ScreeningProgress";
 import { SafetyNote } from "./SafetyNote";
 import { Stepper } from "./Stepper";
 import { StepActions } from "./StepActions";
 import { SummaryCard } from "./SummaryCard";
 import { SymptomInput } from "./SymptomInput";
 
-type Phase = "describe" | "duration" | "severity" | "associated" | "submitting";
+type Phase = "describe" | "screening" | "questions" | "submitting";
 
-const TITLES: Record<Exclude<Phase, "submitting">, string> = {
-  describe: "Describe your symptoms",
+const DESCRIBE_TITLE = "Describe your symptoms";
+const GENERIC_STEPS = {
   duration: "How long have you had these symptoms?",
   severity: "How strong are your symptoms?",
-  associated: "Do you have any of these as well?",
-};
-
-const STEPS = ["describe", "duration", "severity", "associated"] as const;
-
-const QUESTION_NUMBER = { duration: 1, severity: 2, associated: 3 } as const;
+} as const;
 
 export function TriageFlow() {
   const router = useRouter();
 
   // All answers live here, so going back or editing never asks for them again (WCAG 3.3.7).
   const [phase, setPhase] = useState<Phase>("describe");
+  const [step, setStep] = useState(0);
   const [text, setText] = useState("");
+  // The category comes from screening the text. We remember which text it was for,
+  // so going back and continuing without edits doesn't call the AI again.
+  const [category, setCategory] = useState<Pathway>();
+  const [screenedText, setScreenedText] = useState<string>();
   const [duration, setDuration] = useState<TriageInput["duration"]>();
   const [severity, setSeverity] = useState<TriageInput["severity"]>();
-  const [associated, setAssociated] = useState<AssociatedSymptom[]>([]);
+  const [answers, setAnswers] = useState<Answers>({});
   const [textError, setTextError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -52,38 +52,93 @@ export function TriageFlow() {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const firstRender = useRef(true);
 
+  const questions = category ? questionsFor(category) : [];
+  // Two fixed questions for everyone, then the ones for the screened category.
+  const stepIds = ["duration", "severity", ...questions.map((q) => q.id)];
+  const stepId = stepIds[step];
+  const question = questions.find((q) => q.id === stepId);
+
+  const stepTitle =
+    stepId === "duration" || stepId === "severity"
+      ? GENERIC_STEPS[stepId]
+      : (question?.text ?? "");
+
   // Each step gets its own <title>, and focus moves to the step heading (WCAG 2.4.2, 2.4.3).
   useEffect(() => {
-    if (phase === "submitting") return;
-    document.title = `${TITLES[phase]} · Healthcare Triage`;
+    if (phase === "screening" || phase === "submitting") return;
+    const title = phase === "describe" ? DESCRIBE_TITLE : stepTitle;
+    document.title = `${title} · Healthcare Triage`;
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
     headingRef.current?.focus();
-  }, [phase]);
+  }, [phase, stepTitle]);
 
-  function continueFromDescribe() {
-    if (!text.trim()) {
+  async function continueFromDescribe() {
+    const trimmed = text.trim();
+    if (!trimmed) {
       setTextError("Tell us what's bothering you so we can help.");
       textRef.current?.focus();
       return;
     }
     setTextError(null);
-    setPhase("duration");
+
+    if (category && screenedText === trimmed) {
+      setStep(0);
+      setPhase("questions");
+      return;
+    }
+
+    setPhase("screening");
+    document.title = "Looking at your symptoms · Healthcare Triage";
+
+    try {
+      const response = await fetch("/api/triage/screen", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: trimmed }),
+      });
+      if (!response.ok) throw new Error(`Request failed with ${response.status}`);
+      const result = ScreenResultSchema.parse(await response.json());
+
+      // An emergency ends the flow here: no follow-up questions.
+      if (result.next === "emergency") {
+        router.push(`/triage/${result.id}`);
+        return;
+      }
+
+      // Answers belong to one category's questions, so a new category starts clean.
+      if (result.category !== category) setAnswers({});
+      setCategory(result.category);
+      setScreenedText(trimmed);
+      setStep(0);
+      setPhase("questions");
+    } catch {
+      setTextError("Something went wrong on our side. Your description is still here, so please try again.");
+      setPhase("describe");
+    }
   }
 
-  function toggleAssociated(value: AssociatedSymptom) {
-    setAssociated((current) => {
+  function selectAnswer(item: Question, value: string) {
+    setAnswers((current) => {
+      if (item.kind === "single") return { ...current, [item.id]: [value] };
+
       // "None of these" is exclusive: it clears the others, and any other clears it.
-      if (value === "none") return current.includes("none") ? [] : ["none"];
-      const without = current.filter((item) => item !== "none" && item !== value);
-      return current.includes(value) ? without : [...without, value];
+      const selected = current[item.id] ?? [];
+      let next: string[];
+      if (value === NONE_OPTION.value) {
+        next = selected.includes(value) ? [] : [value];
+      } else {
+        const without = selected.filter((v) => v !== NONE_OPTION.value && v !== value);
+        next = selected.includes(value) ? without : [...without, value];
+      }
+      return { ...current, [item.id]: next };
     });
   }
 
   async function submit() {
-    if (!duration || !severity || associated.length === 0) return;
+    if (!category || !duration || !severity) return;
 
     setSubmitError(null);
     setPhase("submitting");
@@ -93,7 +148,7 @@ export function TriageFlow() {
       const response = await fetch("/api/triage", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, duration, severity, associated }),
+        body: JSON.stringify({ text: text.trim(), category, duration, severity, answers }),
       });
       if (!response.ok) throw new Error(`Request failed with ${response.status}`);
 
@@ -103,20 +158,20 @@ export function TriageFlow() {
       setSubmitError(
         "Something went wrong on our side. Your answers are still here, so please try again.",
       );
-      setPhase("associated");
+      setPhase("questions");
     }
   }
 
-  const answers: Partial<TriageInput> = {
+  const summary: Partial<StoredInput> = {
     text: text.trim() || undefined,
+    category,
     duration,
     severity,
-    associated: associated.length ? associated : undefined,
+    answers: Object.keys(answers).length ? answers : undefined,
   };
 
-  if (phase === "submitting") {
-    return <ResultLoading input={answers} />;
-  }
+  if (phase === "screening") return <ScreeningProgress text={text.trim()} />;
+  if (phase === "submitting") return <ResultLoading input={summary} />;
 
   const isDescribe = phase === "describe";
 
@@ -168,23 +223,25 @@ export function TriageFlow() {
                   ))}
                 </div>
 
-                <StepActions onContinue={continueFromDescribe}>Takes about a minute</StepActions>
+                <StepActions onContinue={() => void continueFromDescribe()}>Takes about a minute</StepActions>
               </>
             ) : (
               <QuestionStep
-                phase={phase}
                 headingRef={headingRef}
+                stepId={stepId}
+                title={stepTitle}
+                question={question}
+                number={step + 1}
+                total={stepIds.length}
                 duration={duration}
                 severity={severity}
-                associated={associated}
+                answers={answers}
                 submitError={submitError}
                 onDuration={setDuration}
                 onSeverity={setSeverity}
-                onToggleAssociated={toggleAssociated}
-                onBack={() => setPhase(STEPS[STEPS.indexOf(phase) - 1])}
-                onContinue={() =>
-                  phase === "associated" ? submit() : setPhase(STEPS[STEPS.indexOf(phase) + 1])
-                }
+                onAnswer={selectAnswer}
+                onBack={() => (step === 0 ? setPhase("describe") : setStep(step - 1))}
+                onContinue={() => (step === stepIds.length - 1 ? submit() : setStep(step + 1))}
               />
             )}
           </>
@@ -192,7 +249,7 @@ export function TriageFlow() {
         aside={
           <>
             {!isDescribe && (
-              <SummaryCard input={answers} onEdit={() => setPhase("describe")} />
+              <SummaryCard input={summary} onEdit={() => setPhase("describe")} />
             )}
             <SafetyNote />
           </>
@@ -203,47 +260,61 @@ export function TriageFlow() {
 }
 
 type QuestionStepProps = {
-  phase: "duration" | "severity" | "associated";
   headingRef: React.Ref<HTMLHeadingElement>;
+  stepId: string;
+  title: string;
+  /** Set for category questions, undefined for duration and severity. */
+  question?: Question;
+  number: number;
+  total: number;
   duration?: TriageInput["duration"];
   severity?: TriageInput["severity"];
-  associated: AssociatedSymptom[];
+  answers: Answers;
   submitError: string | null;
   onDuration: (value: TriageInput["duration"]) => void;
   onSeverity: (value: TriageInput["severity"]) => void;
-  onToggleAssociated: (value: AssociatedSymptom) => void;
+  onAnswer: (question: Question, value: string) => void;
   onBack: () => void;
   onContinue: () => void;
 };
 
 function QuestionStep({
-  phase,
   headingRef,
+  stepId,
+  title,
+  question,
+  number,
+  total,
   duration,
   severity,
-  associated,
+  answers,
   submitError,
   onDuration,
   onSeverity,
-  onToggleAssociated,
+  onAnswer,
   onBack,
   onContinue,
 }: QuestionStepProps) {
+  const isLast = number === total;
   const canContinue =
-    phase === "duration" ? !!duration : phase === "severity" ? !!severity : associated.length > 0;
+    stepId === "duration"
+      ? !!duration
+      : stepId === "severity"
+        ? !!severity
+        : (answers[stepId]?.length ?? 0) > 0;
 
   return (
     <>
       <p className="text-sm font-semibold text-ink-subtle">
-        Question {QUESTION_NUMBER[phase]} of 3
+        Question {number} of {total}
       </p>
       <h1
         ref={headingRef}
         tabIndex={-1}
         className="mt-2 text-[28px] font-bold leading-[1.1] tracking-[-0.02em] text-ink outline-none desk:text-[40px]"
       >
-        {TITLES[phase]}
-        {phase === "associated" && (
+        {title}
+        {question?.kind === "multi" && (
           <span className="mt-2 block text-base font-normal tracking-normal text-ink-muted">
             Select all that apply.
           </span>
@@ -251,8 +322,8 @@ function QuestionStep({
       </h1>
 
       <div className="mt-6 desk:mt-8">
-        {phase === "duration" && (
-          <OptionGroup legend={TITLES.duration} className="desk:grid-cols-2">
+        {stepId === "duration" && (
+          <OptionGroup legend={title} className="desk:grid-cols-2">
             {DURATION_OPTIONS.map((option) => (
               <OptionCard
                 key={option.value}
@@ -267,8 +338,8 @@ function QuestionStep({
           </OptionGroup>
         )}
 
-        {phase === "severity" && (
-          <OptionGroup legend={TITLES.severity}>
+        {stepId === "severity" && (
+          <OptionGroup legend={title}>
             {SEVERITY_OPTIONS.map((option) => (
               <OptionCard
                 key={option.value}
@@ -283,20 +354,22 @@ function QuestionStep({
           </OptionGroup>
         )}
 
-        {phase === "associated" && (
+        {question && (
           <OptionGroup
-            legend={`${TITLES.associated} Select all that apply.`}
-            className="desk:grid-cols-2"
+            // A new key per question resets the group, so radios never carry over.
+            key={question.id}
+            legend={question.kind === "multi" ? `${title} Select all that apply.` : title}
+            className={question.kind === "multi" ? "desk:grid-cols-2" : undefined}
           >
-            {ASSOCIATED_OPTIONS.map((option) => (
+            {question.options.map((option) => (
               <OptionCard
                 key={option.value}
-                type="checkbox"
-                name="associated"
+                type={question.kind === "multi" ? "checkbox" : "radio"}
+                name={question.id}
                 value={option.value}
                 label={option.label}
-                checked={associated.includes(option.value)}
-                onChange={() => onToggleAssociated(option.value)}
+                checked={answers[question.id]?.includes(option.value) ?? false}
+                onChange={() => onAnswer(question, option.value)}
               />
             ))}
           </OptionGroup>
@@ -316,7 +389,7 @@ function QuestionStep({
         onBack={onBack}
         onContinue={onContinue}
         continueDisabled={!canContinue}
-        continueLabel={phase === "associated" ? "Check my symptoms" : "Continue"}
+        continueLabel={isLast ? "Check my symptoms" : "Continue"}
       />
     </>
   );

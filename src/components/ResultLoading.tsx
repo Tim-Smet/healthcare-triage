@@ -2,10 +2,10 @@ import { PageShell, TwoColumn } from "./PageShell";
 import { SafetyNote } from "./SafetyNote";
 import { Stepper } from "./Stepper";
 import { SummaryCard } from "./SummaryCard";
-import type { TriageInput } from "@/lib/triage/schema";
+import type { StoredInput } from "@/lib/triage/schema";
 
 /** Loading state: text in a polite live region, never a spinner alone. */
-export function ResultLoading({ input }: { input?: Partial<TriageInput> }) {
+export function ResultLoading({ input }: { input?: Partial<StoredInput> }) {
   return (
     <PageShell>
       <Stepper current={3} />

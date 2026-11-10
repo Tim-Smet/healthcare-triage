@@ -1,4 +1,5 @@
-import type { Pathway, TriageInput } from "./schema";
+import { hasAnswer } from "./questions";
+import type { Pathway, StoredInput } from "./schema";
 
 /**
  * Deterministic red-flag rules. If one matches, the result is `emergency`
@@ -6,6 +7,9 @@ import type { Pathway, TriageInput } from "./schema";
  *
  * The matching is deliberately conservative (it errs towards "emergency").
  * It does not understand negation, so "no chest pain" can still match.
+ *
+ * It also runs on text alone (while screening, before any question is asked),
+ * so every rule has to cope with missing severity and answers.
  */
 
 export type RedFlagRule = {
@@ -13,7 +17,7 @@ export type RedFlagRule = {
   pathway: Pathway;
   /** Plain-language reason, shown on the emergency screen. */
   reason: string;
-  matches: (input: TriageInput, text: string) => boolean;
+  matches: (input: StoredInput, text: string) => boolean;
 };
 
 const mentionsChestPain = (text: string) =>
@@ -30,7 +34,7 @@ export const RED_FLAG_RULES: RedFlagRule[] = [
     reason:
       "Chest pain with shortness of breath can be a sign of a heart problem that needs help right away.",
     matches: (input, text) =>
-      mentionsChestPain(text) && input.associated.includes("shortness_of_breath"),
+      mentionsChestPain(text) && hasAnswer(input.answers, "shortness_of_breath"),
   },
   {
     id: "chest-pain-radiating",
@@ -38,7 +42,7 @@ export const RED_FLAG_RULES: RedFlagRule[] = [
     reason:
       "Chest pain that spreads to the arm, jaw or back can be a sign of a heart attack.",
     matches: (input, text) =>
-      mentionsChestPain(text) && input.associated.includes("radiating_pain"),
+      mentionsChestPain(text) && hasAnswer(input.answers, "radiating_pain"),
   },
   {
     id: "chest-pain-with-fainting",
@@ -46,7 +50,7 @@ export const RED_FLAG_RULES: RedFlagRule[] = [
     reason:
       "Chest pain with dizziness or fainting can be a sign of a serious heart problem.",
     matches: (input, text) =>
-      mentionsChestPain(text) && input.associated.includes("dizziness_fainting"),
+      mentionsChestPain(text) && hasAnswer(input.answers, "dizziness_fainting"),
   },
   {
     id: "severe-chest-pain",
@@ -68,7 +72,7 @@ export const RED_FLAG_RULES: RedFlagRule[] = [
     pathway: "Pulmonology",
     reason: "Severe trouble breathing needs help right away.",
     matches: (input, text) =>
-      (input.severity === "severe" && input.associated.includes("shortness_of_breath")) ||
+      (input.severity === "severe" && hasAnswer(input.answers, "shortness_of_breath")) ||
       mentionsAny(text, [
         /can'?t breathe/,
         /cannot breathe/,
@@ -115,7 +119,7 @@ export type RuleMatch = {
 };
 
 /** Returns the first matching red-flag rule, or null. */
-export function evaluateRules(input: TriageInput): RuleMatch | null {
+export function evaluateRules(input: StoredInput): RuleMatch | null {
   const text = input.text.toLowerCase();
   for (const rule of RED_FLAG_RULES) {
     if (rule.matches(input, text)) {

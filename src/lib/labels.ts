@@ -1,5 +1,4 @@
 import type {
-  AssociatedSymptom,
   ConsultationType,
   Pathway,
   TriageInput,
@@ -21,16 +20,7 @@ export const SEVERITY_OPTIONS: Array<{ value: TriageInput["severity"]; label: st
   { value: "severe", label: "Severe: it's hard to do anything" },
 ];
 
-export const ASSOCIATED_OPTIONS: Array<{ value: AssociatedSymptom; label: string }> = [
-  { value: "shortness_of_breath", label: "Shortness of breath" },
-  { value: "dizziness_fainting", label: "Dizziness or fainting" },
-  { value: "fever", label: "Fever" },
-  { value: "nausea_vomiting", label: "Nausea or vomiting" },
-  { value: "radiating_pain", label: "Pain that spreads to arm, jaw or back" },
-  { value: "none", label: "None of these" },
-];
-
-export const EXAMPLE_SYMPTOMS = ["Persistent cough", "Stomach pain after eating"];
+export const EXAMPLE_SYMPTOMS = ["Persistent cough", "Stomach pain after eating", "Help with my diet"];
 
 const labelOf = <T extends string>(options: Array<{ value: T; label: string }>, value: T) =>
   options.find((option) => option.value === value)?.label ?? value;
@@ -41,9 +31,6 @@ export const durationLabel = (value: TriageInput["duration"]) =>
 /** "Mild: I can do everything as usual" -> "Mild" */
 export const severityShortLabel = (value: TriageInput["severity"]) =>
   labelOf(SEVERITY_OPTIONS, value).split(":")[0];
-
-export const associatedLabel = (value: AssociatedSymptom) =>
-  labelOf(ASSOCIATED_OPTIONS, value);
 
 export const URGENCY_LABEL: Record<Urgency, string> = {
   emergency: "Emergency",
@@ -56,6 +43,7 @@ export const SPECIALIST: Record<Pathway, string> = {
   Cardiology: "a heart specialist",
   Pulmonology: "a lung specialist",
   Gastroenterology: "a digestive health specialist",
+  Dietetics: "a dietitian",
   "General Practice": "a general practitioner",
 };
 
@@ -66,6 +54,7 @@ export const CONSULTATION_LABEL: Record<ConsultationType, string> = {
   "check-up": "a check-up",
   cardiography: "a heart tracing (cardiography)",
   "lung-function-test": "a lung function test",
+  "diet-consultation": "a diet consultation",
 };
 
 /** Button labels name the action. */
@@ -75,4 +64,5 @@ export const SCHEDULE_CTA: Record<ConsultationType, string> = {
   "check-up": "Schedule a check-up",
   cardiography: "Schedule a heart tracing",
   "lung-function-test": "Schedule a lung function test",
+  "diet-consultation": "Schedule a diet consultation",
 };

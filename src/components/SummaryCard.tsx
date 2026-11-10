@@ -1,10 +1,11 @@
-import { associatedLabel, durationLabel, severityShortLabel } from "@/lib/labels";
-import type { TriageInput } from "@/lib/triage/schema";
+import { durationLabel, severityShortLabel } from "@/lib/labels";
+import { describeAnswers } from "@/lib/triage/questions";
+import type { StoredInput } from "@/lib/triage/schema";
 import { Button } from "./Button";
 
 type Props = {
   /** Answers so far. Details appear as the patient gives them. */
-  input: Partial<TriageInput>;
+  input: Partial<StoredInput>;
   /** When set, shows an Edit button that returns to the first step. */
   onEdit?: () => void;
 };
@@ -13,8 +14,10 @@ export function SummaryCard({ input, onEdit }: Props) {
   const rows: Array<[string, string]> = [];
   if (input.duration) rows.push(["How long", durationLabel(input.duration)]);
   if (input.severity) rows.push(["How strong", severityShortLabel(input.severity)]);
-  if (input.associated?.length) {
-    rows.push(["Also", input.associated.map(associatedLabel).join(", ")]);
+  if (input.category && input.answers) {
+    for (const { question, chosen } of describeAnswers(input.category, input.answers)) {
+      rows.push([question.label, chosen.map((option) => option.label).join(", ")]);
+    }
   }
 
   return (

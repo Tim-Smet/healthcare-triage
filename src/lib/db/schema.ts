@@ -6,7 +6,7 @@ import {
   RESULT_SOURCES,
   URGENCIES,
   type Pathway,
-  type TriageInput,
+  type StoredInput,
 } from "@/lib/triage/schema";
 
 /** One row per triage. Core fields are real columns so a hospital system can query them. */
@@ -20,6 +20,6 @@ export const triageSessions = pgTable("triage_sessions", {
   reason: text("reason"),
   rankedPathways: jsonb("ranked_pathways").$type<Pathway[]>().notNull(),
   nextSteps: jsonb("next_steps").$type<string[]>().notNull(),
-  input: jsonb("input").$type<TriageInput>().notNull(),
+  input: jsonb("input").$type<StoredInput>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

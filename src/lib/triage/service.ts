@@ -1,12 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { assessWithStub, type AssessFn } from "./ai-stub";
+import { assessWithStub, screenWithStub, type AssessFn, type ScreenFn } from "./ai-stub";
 import { maxUrgency } from "./merge";
 import { evaluateRules } from "./rules";
 import {
   AiAssessmentSchema,
+  AiScreeningSchema,
   type AiAssessment,
+  type AiScreening,
   type Pathway,
+  type ScreenResult,
+  type StoredInput,
   type TriageInput,
   type TriageRecord,
 } from "./schema";
@@ -28,6 +32,7 @@ const FALLBACK_STEPS = [
 
 type Deps = {
   assess: AssessFn;
+  screen: ScreenFn;
   store: TriageStore;
 };
 
@@ -45,6 +50,16 @@ const assessDefault: AssessFn = async (input) => {
   }
   const { assessWithMastra } = await import("@/lib/mastra/agent");
   return assessWithMastra(input);
+};
+
+/** Same key rules as `assessDefault`, for the screening agent. */
+const screenDefault: ScreenFn = async (text) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    if (IS_PRODUCTION) throw new Error("ANTHROPIC_API_KEY is not set");
+    return screenWithStub(text);
+  }
+  const { screenWithMastra } = await import("@/lib/mastra/agent");
+  return screenWithMastra(text);
 };
 
 /** Postgres (Neon) when DATABASE_URL is set, otherwise in-memory for local development. */
@@ -70,11 +85,11 @@ async function resolveStore(): Promise<TriageStore> {
   return (resolved = createPostgresStore(url));
 }
 
-const defaultDeps: Deps = { assess: assessDefault, store: storeDefault };
+const defaultDeps: Deps = { assess: assessDefault, screen: screenDefault, store: storeDefault };
 
 type RecordFields = Omit<TriageRecord, "id" | "input" | "createdAt">;
 
-function buildRecord(input: TriageInput, fields: RecordFields): TriageRecord {
+function buildRecord(input: StoredInput, fields: RecordFields): TriageRecord {
   return { ...fields, id: randomUUID(), input, createdAt: new Date().toISOString() };
 }
 
@@ -135,16 +150,60 @@ function fieldsFromAssessment(assessment: AiAssessment | null): RecordFields {
   };
 }
 
+/** Returns a validated screening, or null if the AI failed or returned something invalid. */
+async function screenSafely(screen: ScreenFn, text: string): Promise<AiScreening | null> {
+  try {
+    const parsed = AiScreeningSchema.safeParse(await screen(text));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Step 1, on the free text alone, before any follow-up question:
+ *   1. red-flag rules -> emergency record, the UI goes straight to the emergency screen
+ *   2. AI screening -> emergency record, or the category that picks the follow-up questions
+ *   3. if the AI fails, ask the General Practice questions so the patient is never stuck
+ */
+export async function screenTriage(
+  text: string,
+  deps: Pick<Deps, "screen" | "store"> = defaultDeps,
+): Promise<ScreenResult> {
+  const input: StoredInput = { text };
+
+  const match = evaluateRules(input);
+  if (match) {
+    const record = buildRecord(input, emergencyFields(match.pathway, match.reason, "rules"));
+    await deps.store.save(record);
+    return { next: "emergency", id: record.id };
+  }
+
+  const screening = await screenSafely(deps.screen, text);
+  if (screening?.emergency) {
+    const fields = emergencyFields(
+      screening.category,
+      "Based on what you told us, you may need help right away.",
+      "ai",
+    );
+    const record = buildRecord({ ...input, category: screening.category }, fields);
+    await deps.store.save(record);
+    return { next: "emergency", id: record.id };
+  }
+
+  return { next: "questions", category: screening?.category ?? "General Practice" };
+}
+
 /**
  * The triage flow:
- *   1. red-flag rules (deterministic) -> emergency, AI is skipped
+ *   1. red-flag rules (deterministic, now with the follow-up answers) -> emergency, AI is skipped
  *   2. AI assessment, validated against the schema
  *   3. urgency = max(rules, AI); the AI can raise urgency, never lower it
  *   4. if the AI fails, fall back to a safe default so the patient still gets guidance
  */
 export async function runTriage(
   input: TriageInput,
-  deps: Deps = defaultDeps,
+  deps: Pick<Deps, "assess" | "store"> = defaultDeps,
 ): Promise<TriageRecord> {
   const match = evaluateRules(input);
   const fields = match

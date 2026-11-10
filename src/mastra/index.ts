@@ -4,7 +4,7 @@ import {
   MastraStorageExporter,
   SensitiveDataFilter,
 } from "@mastra/observability";
-import { triageAgent } from "../lib/mastra/agent";
+import { screeningAgent, triageAgent } from "../lib/mastra/agent";
 
 /**
  * Entry point for `npm run studio` (Mastra Studio). Dev tool only, not used by
@@ -12,7 +12,7 @@ import { triageAgent } from "../lib/mastra/agent";
  * machine: no platform exporter is configured.
  */
 export const mastra = new Mastra({
-  agents: { triageAgent },
+  agents: { screeningAgent, triageAgent },
   observability: new Observability({
     configs: {
       default: {

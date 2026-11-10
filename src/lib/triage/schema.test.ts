@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { AiAssessmentSchema, TriageInputSchema } from "./schema";
+import {
+  AiAssessmentSchema,
+  AiScreeningSchema,
+  ScreenInputSchema,
+  StoredInputSchema,
+  TriageInputSchema,
+} from "./schema";
 import { makeInput } from "./test-helpers";
 
 describe("TriageInputSchema", () => {
@@ -17,16 +23,35 @@ describe("TriageInputSchema", () => {
     expect(TriageInputSchema.safeParse(makeInput({ text: "a".repeat(2000) })).success).toBe(true);
   });
 
-  it("rejects an empty associated list", () => {
-    expect(TriageInputSchema.safeParse(makeInput({ associated: [] })).success).toBe(false);
+  it("rejects an answer with no chosen option", () => {
+    expect(TriageInputSchema.safeParse(makeInput({ answers: { gp_also: [] } })).success).toBe(false);
   });
 
-  it('rejects "none" combined with another symptom', () => {
-    expect(TriageInputSchema.safeParse(makeInput({ associated: ["none", "fever"] })).success).toBe(false);
+  it("rejects an unknown category", () => {
+    expect(TriageInputSchema.safeParse({ ...makeInput(), category: "Dermatology" }).success).toBe(false);
   });
 
   it("rejects unknown enum values", () => {
     expect(TriageInputSchema.safeParse({ ...makeInput(), severity: "catastrophic" }).success).toBe(false);
+  });
+});
+
+describe("ScreenInputSchema and StoredInputSchema", () => {
+  it("screening needs only the text", () => {
+    expect(ScreenInputSchema.safeParse({ text: "a cough" }).success).toBe(true);
+    expect(ScreenInputSchema.safeParse({ text: " " }).success).toBe(false);
+  });
+
+  it("a stored record may stop after the text (emergency while screening)", () => {
+    expect(StoredInputSchema.safeParse({ text: "can't breathe" }).success).toBe(true);
+    expect(TriageInputSchema.safeParse({ text: "can't breathe" }).success).toBe(false);
+  });
+});
+
+describe("AiScreeningSchema", () => {
+  it("accepts a flag plus a category and rejects unknown categories", () => {
+    expect(AiScreeningSchema.safeParse({ emergency: false, category: "Dietetics" }).success).toBe(true);
+    expect(AiScreeningSchema.safeParse({ emergency: false, category: "Dermatology" }).success).toBe(false);
   });
 });
 

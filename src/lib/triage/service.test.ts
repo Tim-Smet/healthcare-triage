@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AssessFn } from "./ai-stub";
-import { type AiAssessment, type TriageRecord } from "./schema";
-import { getTriage, runTriage } from "./service";
+import type { AssessFn, ScreenFn } from "./ai-stub";
+import { type AiAssessment, type AiScreening, type TriageRecord } from "./schema";
+import { getTriage, runTriage, screenTriage } from "./service";
 import type { TriageStore } from "./store";
 import { makeInput } from "./test-helpers";
 
@@ -99,6 +99,71 @@ describe("runTriage", () => {
     expect(saved.get(record.id)).toEqual(record);
     expect(record.input).toEqual(input);
     expect(new Date(record.createdAt).toString()).not.toBe("Invalid Date");
+  });
+});
+
+const screening = (overrides: Partial<AiScreening> = {}): AiScreening => ({
+  emergency: false,
+  category: "Dietetics",
+  ...overrides,
+});
+
+describe("screenTriage", () => {
+  it("goes straight to the emergency screen on a red flag, without calling the AI", async () => {
+    const screen = vi.fn<ScreenFn>();
+    const { store, saved } = fakeStore();
+
+    const result = await screenTriage("I can't breathe", { screen, store });
+
+    expect(screen).not.toHaveBeenCalled();
+    if (result.next !== "emergency") throw new Error("expected emergency");
+    expect(saved.get(result.id)).toMatchObject({
+      urgency: "emergency",
+      next: "emergency",
+      source: "rules",
+      pathway: "Pulmonology",
+      input: { text: "I can't breathe" },
+    });
+  });
+
+  it("goes to the emergency screen when the AI flags one", async () => {
+    const { store, saved } = fakeStore();
+
+    const result = await screenTriage("something frightening", {
+      screen: async () => screening({ emergency: true, category: "Cardiology" }),
+      store,
+    });
+
+    if (result.next !== "emergency") throw new Error("expected emergency");
+    expect(saved.get(result.id)).toMatchObject({
+      urgency: "emergency",
+      source: "ai",
+      pathway: "Cardiology",
+      input: { text: "something frightening", category: "Cardiology" },
+    });
+  });
+
+  it("returns the category to ask questions for, and saves nothing yet", async () => {
+    const { store } = fakeStore();
+
+    const result = await screenTriage("I want to eat healthier", {
+      screen: async () => screening(),
+      store,
+    });
+
+    expect(result).toEqual({ next: "questions", category: "Dietetics" });
+    expect(store.save).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["throws", async () => { throw new Error("boom"); }],
+    ["returns invalid data", async () => ({ emergency: "maybe" }) as unknown as AiScreening],
+  ])("asks the General Practice questions when the AI %s", async (_name, screen) => {
+    const { store } = fakeStore();
+    expect(await screenTriage("a cough", { screen, store })).toEqual({
+      next: "questions",
+      category: "General Practice",
+    });
   });
 });
 

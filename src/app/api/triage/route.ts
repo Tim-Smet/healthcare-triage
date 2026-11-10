@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validateAnswers } from "@/lib/triage/questions";
 import { TriageInputSchema } from "@/lib/triage/schema";
 import { runTriage } from "@/lib/triage/service";
 
@@ -14,6 +15,14 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json(
       { error: "Invalid input.", fields: z.flattenError(parsed.error).fieldErrors },
+      { status: 400 },
+    );
+  }
+
+  const answersError = validateAnswers(parsed.data.category, parsed.data.answers);
+  if (answersError) {
+    return Response.json(
+      { error: "Invalid input.", fields: { answers: [answersError] } },
       { status: 400 },
     );
   }

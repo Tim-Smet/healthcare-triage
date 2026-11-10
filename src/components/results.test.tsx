@@ -16,7 +16,7 @@ const record: TriageRecord = {
   nextSteps: ["First step", "Second step"],
   reason: null,
   source: "ai",
-  input: { text: "palpitations", duration: "few_days", severity: "moderate", associated: ["fever"] },
+  input: { text: "palpitations", category: "Cardiology", duration: "few_days", severity: "moderate", answers: {} },
   createdAt: "2026-01-01T00:00:00.000Z",
 };
 
