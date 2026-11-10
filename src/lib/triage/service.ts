@@ -145,7 +145,7 @@ function fieldsFromAssessment(assessment: AiAssessment | null): RecordFields {
     consultationType: assessment.consultationType,
     rankedPathways: pathways,
     nextSteps: assessment.nextSteps,
-    reason: null,
+    reason: assessment.reason,
     source: "ai",
   };
 }

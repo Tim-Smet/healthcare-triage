@@ -70,6 +70,10 @@ export const assessWithStub: AssessFn = async (input) => {
 
   return {
     urgency,
+    reason:
+      urgency === "urgent"
+        ? `Your description fits ${pathway}, and your answers include something we want checked within a day or two.`
+        : `Your description fits ${pathway}, and nothing in your answers points to a rush, so this can wait a few weeks.`,
     rankedPathways: ranked.map((p) => ({
       pathway: p,
       rationale: `Your description fits ${p}.`,

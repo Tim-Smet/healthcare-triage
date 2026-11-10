@@ -61,10 +61,15 @@ describe("AiAssessmentSchema", () => {
     rankedPathways: [{ pathway: "Cardiology", rationale: "x" }],
     consultationType: "check-up",
     nextSteps: ["one", "two"],
+    reason: "You told us x.",
   };
 
   it("accepts a valid assessment", () => {
     expect(AiAssessmentSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("requires a reason", () => {
+    expect(AiAssessmentSchema.safeParse({ ...valid, reason: undefined }).success).toBe(false);
   });
 
   it("rejects empty pathways, empty steps and more than 4 steps", () => {

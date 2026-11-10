@@ -22,6 +22,7 @@ const assessment = (overrides: Partial<AiAssessment> = {}): AiAssessment => ({
   ],
   consultationType: "check-up",
   nextSteps: ["Book an appointment", "Bring your medication list"],
+  reason: "You told us about a burning feeling after meals, which fits a digestive cause.",
   ...overrides,
 });
 
@@ -55,7 +56,7 @@ describe("runTriage", () => {
       rankedPathways: ["Gastroenterology", "General Practice"],
       consultationType: "check-up",
       nextSteps: ["Book an appointment", "Bring your medication list"],
-      reason: null,
+      reason: "You told us about a burning feeling after meals, which fits a digestive cause.",
     });
   });
 

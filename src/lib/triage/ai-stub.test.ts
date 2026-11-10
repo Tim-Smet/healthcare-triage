@@ -9,6 +9,10 @@ describe("assessWithStub", () => {
     expect(AiAssessmentSchema.safeParse(result).success).toBe(true);
   });
 
+  it("explains why, with a non-empty reason", async () => {
+    expect((await assessWithStub(makeInput())).reason).toMatch(/fits General Practice/);
+  });
+
   it("ranks the keyword-matched pathway first and General Practice last", async () => {
     const result = await assessWithStub(makeInput({ text: "I keep coughing and my heart races", category: "Cardiology" }));
     expect(result.rankedPathways.map((p) => p.pathway)).toEqual([

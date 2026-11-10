@@ -34,6 +34,15 @@ describe("ResultCard", () => {
     ]);
   });
 
+  it("explains why under “Why we suggest this”, only when there is a reason", () => {
+    const { rerender } = render(<ResultCard record={{ ...record, reason: "You told us about palpitations." }} />);
+    expect(screen.getByRole("heading", { name: "Why we suggest this" })).toBeTruthy();
+    expect(screen.getByText("You told us about palpitations.")).toBeTruthy();
+
+    rerender(<ResultCard record={{ ...record, reason: null }} />);
+    expect(screen.queryByRole("heading", { name: "Why we suggest this" })).toBeNull();
+  });
+
   it("says scheduling is not connected, with the short reference, after pressing the CTA", async () => {
     const user = userEvent.setup();
     render(<ResultCard record={record} />);

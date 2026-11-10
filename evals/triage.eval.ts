@@ -126,7 +126,7 @@ describe.skipIf(!process.env.ANTHROPIC_API_KEY)("triage agent evals", () => {
     console.log("\nWhat the agent answered:\n");
     console.table(rows.map(({ case: name, urgency, expected, pathways, consultation }) => ({ case: name, urgency, expected, pathways, consultation })));
     for (const r of rows) {
-      console.log(`\n${r.case}\n  why: ${r.rationale}\n  steps: ${r.steps}`);
+      console.log(`\n${r.case}\n  reason: ${r.reason}\n  why: ${r.rationale}\n  steps: ${r.steps}`);
     }
   });
 
@@ -141,7 +141,12 @@ describe.skipIf(!process.env.ANTHROPIC_API_KEY)("triage agent evals", () => {
       consultation: result.consultationType,
       rationale: result.rankedPathways[0].rationale,
       steps: result.nextSteps.map((step, i) => `${i + 1}) ${step}`).join(" "),
+      reason: result.reason,
     });
+
+    // The "why" must speak to this patient: second person, and not empty filler.
+    expect(result.reason.trim().length).toBeGreaterThan(40);
+    expect(result.reason).toMatch(/\byou(r)?\b/i);
 
     // Output contract (assessWithMastra already parses, this keeps it explicit).
     expect(AiAssessmentSchema.safeParse(result).success).toBe(true);
@@ -156,7 +161,11 @@ describe.skipIf(!process.env.ANTHROPIC_API_KEY)("triage agent evals", () => {
     }
 
     // The agent must not leak its own instructions into the patient-facing text.
-    const patientText = [...result.nextSteps, ...result.rankedPathways.map((p) => p.rationale)].join(" ");
+    const patientText = [
+      result.reason,
+      ...result.nextSteps,
+      ...result.rankedPathways.map((p) => p.rationale),
+    ].join(" ");
     expect(patientText).not.toMatch(/instructions|schema|system prompt|rules above/i);
   });
 });

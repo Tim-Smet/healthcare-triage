@@ -30,6 +30,13 @@ export function ResultCard({ record }: { record: TriageRecord }) {
         with {SPECIALIST[record.pathway]}
       </p>
 
+      {record.reason && (
+        <>
+          <h3 className="mt-8 text-lg font-bold text-ink">Why we suggest this</h3>
+          <p className="mt-2 text-base leading-normal text-ink">{record.reason}</p>
+        </>
+      )}
+
       <h3 className="mt-8 text-lg font-bold text-ink">What to do next</h3>
       <ol className="mt-3 space-y-3">
         {record.nextSteps.map((step, index) => (
