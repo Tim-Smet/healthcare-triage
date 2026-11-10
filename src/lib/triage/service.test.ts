@@ -21,7 +21,7 @@ const assessment = (overrides: Partial<AiAssessment> = {}): AiAssessment => ({
     { pathway: "General Practice", rationale: "b" },
   ],
   consultationType: "check-up",
-  nextSteps: ["Book an appointment"],
+  nextSteps: ["Book an appointment", "Bring your medication list"],
   ...overrides,
 });
 
@@ -54,7 +54,7 @@ describe("runTriage", () => {
       pathway: "Gastroenterology",
       rankedPathways: ["Gastroenterology", "General Practice"],
       consultationType: "check-up",
-      nextSteps: ["Book an appointment"],
+      nextSteps: ["Book an appointment", "Bring your medication list"],
       reason: null,
     });
   });

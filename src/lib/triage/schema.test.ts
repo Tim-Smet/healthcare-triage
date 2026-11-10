@@ -35,7 +35,7 @@ describe("AiAssessmentSchema", () => {
     urgency: "urgent",
     rankedPathways: [{ pathway: "Cardiology", rationale: "x" }],
     consultationType: "check-up",
-    nextSteps: ["one"],
+    nextSteps: ["one", "two"],
   };
 
   it("accepts a valid assessment", () => {
@@ -45,6 +45,6 @@ describe("AiAssessmentSchema", () => {
   it("rejects empty pathways, empty steps and more than 4 steps", () => {
     expect(AiAssessmentSchema.safeParse({ ...valid, rankedPathways: [] }).success).toBe(false);
     expect(AiAssessmentSchema.safeParse({ ...valid, nextSteps: [] }).success).toBe(false);
-    expect(AiAssessmentSchema.safeParse({ ...valid, nextSteps: ["1", "2", "3", "4", "5"] }).success).toBe(false);
+    expect(AiAssessmentSchema.safeParse({ ...valid, nextSteps: ["1", "2", "3", "4"] }).success).toBe(false);
   });
 });

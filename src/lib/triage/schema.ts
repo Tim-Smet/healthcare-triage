@@ -66,12 +66,30 @@ export type ConsultationType = z.infer<typeof ConsultationTypeSchema>;
 
 /** What the AI agent must return. The rules layer never trusts it to lower urgency. */
 export const AiAssessmentSchema = z.object({
-  urgency: UrgencySchema,
+  urgency: UrgencySchema.describe(
+    '"emergency" = needs help right now, "urgent" = should be seen within a day or two, "routine" = can wait a few weeks. When unsure between two levels, choose the more urgent one.',
+  ),
   rankedPathways: z
-    .array(z.object({ pathway: PathwaySchema, rationale: z.string() }))
-    .min(1),
-  consultationType: ConsultationTypeSchema,
-  nextSteps: z.array(z.string()).min(1).max(4),
+    .array(
+      z.object({
+        pathway: PathwaySchema.describe(
+          'Use "General Practice" when no specialty clearly fits.',
+        ),
+        rationale: z
+          .string()
+          .describe("One plain-language sentence, in second person (you)."),
+      }),
+    )
+    .min(1)
+    .describe("Most likely pathway first."),
+  consultationType: ConsultationTypeSchema.describe(
+    'Use "emergency-assessment" only when urgency is "emergency".',
+  ),
+  nextSteps: z
+    .array(z.string())
+    .min(2)
+    .max(3)
+    .describe("Short, plain-language steps for the patient. No jargon."),
 });
 
 export type AiAssessment = z.infer<typeof AiAssessmentSchema>;
