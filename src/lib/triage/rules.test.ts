@@ -42,6 +42,13 @@ describe("evaluateRules", () => {
     expect(evaluateRules(input)?.ruleId).toBe("chest-pain-with-breathlessness");
   });
 
+  // Known limit, documented on purpose: the rules don't read negation, so this errs towards
+  // "emergency". If this ever starts returning null, the rules got smarter: update the test.
+  it("flags negated chest pain too (known limit: no negation handling)", () => {
+    const input = makeInput({ text: "I have no chest pain", severity: "severe" });
+    expect(evaluateRules(input)?.ruleId).toBe("severe-chest-pain");
+  });
+
   it("works on the text alone, before any question is answered (screening)", () => {
     expect(evaluateRules({ text: "I can't breathe" })?.ruleId).toBe("severe-breathlessness");
     expect(evaluateRules({ text: "a dry cough" })).toBeNull();
