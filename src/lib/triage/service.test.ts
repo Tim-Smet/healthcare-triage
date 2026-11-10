@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AssessFn, ScreenFn } from "./ai-stub";
 import { type AiAssessment, type AiScreening, type TriageRecord } from "./schema";
-import { getTriage, runTriage, screenTriage } from "./service";
+import { getTriage, listTriages, runTriage, screenTriage } from "./service";
 import type { TriageStore } from "./store";
 import { makeInput } from "./test-helpers";
 
@@ -10,6 +10,7 @@ function fakeStore() {
   const store: TriageStore = {
     save: vi.fn(async (r) => void saved.set(r.id, r)),
     get: vi.fn(async (id) => saved.get(id) ?? null),
+    list: vi.fn(async (limit) => [...saved.values()].reverse().slice(0, limit)),
   };
   return { store, saved };
 }
@@ -185,5 +186,14 @@ describe("getTriage", () => {
     const { store } = fakeStore();
     expect(await getTriage("not-a-uuid", { store })).toBeNull();
     expect(store.get).not.toHaveBeenCalled();
+  });
+});
+
+describe("listTriages", () => {
+  it("returns saved triages through the store", async () => {
+    const { store } = fakeStore();
+    const record = await runTriage(makeInput(), { assess: async () => assessment(), store });
+
+    expect(await listTriages(10, { store })).toEqual([record]);
   });
 });

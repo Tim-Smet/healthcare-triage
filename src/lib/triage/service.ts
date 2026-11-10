@@ -70,6 +70,9 @@ const storeDefault: TriageStore = {
   async get(id) {
     return (await resolveStore()).get(id);
   },
+  async list(limit) {
+    return (await resolveStore()).list(limit);
+  },
 };
 
 let resolved: TriageStore | undefined;
@@ -222,4 +225,12 @@ export async function getTriage(
   // The DB column is a uuid, so anything else would throw instead of "not found".
   if (!z.uuid().safeParse(id).success) return null;
   return deps.store.get(id);
+}
+
+/** The most recent triages, newest first. Read by the admin page. */
+export async function listTriages(
+  limit = 100,
+  deps: Pick<Deps, "store"> = defaultDeps,
+): Promise<TriageRecord[]> {
+  return deps.store.list(limit);
 }

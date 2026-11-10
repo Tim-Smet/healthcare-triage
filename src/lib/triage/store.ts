@@ -7,6 +7,8 @@ import type { TriageRecord } from "./schema";
 export interface TriageStore {
   save(record: TriageRecord): Promise<void>;
   get(id: string): Promise<TriageRecord | null>;
+  /** Newest first. For the admin page. */
+  list(limit: number): Promise<TriageRecord[]>;
 }
 
 // Kept on globalThis so the data survives hot reloads in dev.
@@ -21,5 +23,10 @@ export const memoryStore: TriageStore = {
   },
   async get(id) {
     return records.get(id) ?? null;
+  },
+  async list(limit) {
+    return [...records.values()]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
   },
 };

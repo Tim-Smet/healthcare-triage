@@ -1,5 +1,5 @@
 import { neon } from "@neondatabase/serverless";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
 import { TriageRecordSchema, type TriageRecord } from "@/lib/triage/schema";
 import type { TriageStore } from "@/lib/triage/store";
@@ -40,6 +40,23 @@ export function createPostgresStore(databaseUrl: string): TriageStore {
         createdAt: row.createdAt.toISOString(),
       });
       return parsed.success ? (parsed.data satisfies TriageRecord) : null;
+    },
+
+    async list(limit) {
+      const rows = await db
+        .select()
+        .from(triageSessions)
+        .orderBy(desc(triageSessions.createdAt))
+        .limit(limit);
+
+      // Rows that fail validation are skipped, same as in `get`.
+      return rows.flatMap((row) => {
+        const parsed = TriageRecordSchema.safeParse({
+          ...row,
+          createdAt: row.createdAt.toISOString(),
+        });
+        return parsed.success ? [parsed.data] : [];
+      });
     },
   };
 }
